@@ -42,7 +42,7 @@ def message_count(messages_by_person, grouping, verbose, out_format='csv'):
     date_range = month_range(oldest_date, newest_date)
 
     data = {person: [msg_counts[time] if time in msg_counts else 0 for time in date_range] for person, msg_counts in raw.items()}
-    header = ['Person'] + [str(d) for d in date_range]
+    header = [''] + [str(d) for d in date_range]
 
     ret = [header] + [[person] + msg_counts for person, msg_counts in data.items()]
     return ret
