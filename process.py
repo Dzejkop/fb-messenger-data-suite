@@ -54,17 +54,41 @@ def message_count(messages_by_person, grouping, verbose, out_format='csv'):
 def filter_data_by_people(data, people):
     return {key: value for key, value in data.items() if key in people}
 
+def save_results(data, out_format, verbose, output_filepath = None):
+    out_file = output_filepath
+    if not out_file:
+        if out_format in ['json', 'pretty-json']:
+            out_file = 'out.json'
+        elif out_format in ['csv']:
+            out_file = 'out.csv'
+        else:
+            raise Exception('Unsupported output format')
+
+    if verbose:
+        print('Saving data to {}'.format(args.output))
+    with open(out_file, 'w') as output_file:
+        if out_format == 'json':
+            json.dump(result, output_file)
+        elif out_format == 'pretty-json':
+            json.dump(result, output_file, indent=True)
+        elif out_format == 'csv':
+            csv_writer = csv.writer(output_file, delimiter=args.csv_delimiter)
+            for row in result:
+                csv_writer.writerow(row)
+        else:
+            raise Exception('Unsupported output format')
+
 def main():
-    parser = argparse.ArgumentParser(description='Process')
+    parser = argparse.ArgumentParser(epilog='~~ From Dzejkop with Love <3 ~~')
 
     parser.add_argument('data_source', metavar='SOURCE', type=str, help='data source file.')
-    parser.add_argument('mode', metavar='MODE', choices=['message-count'], help='mode of operation')
-    parser.add_argument('output', metavar='OUTPUT', type=str, help='output file path.')
+    parser.add_argument('mode', choices=['message-count'], help='mode of operation')
+    parser.add_argument('--output', type=str, help='output file path, by default is equal to "out" with extension matching the format')
     parser.add_argument('--group_by', choices=['day', 'week', 'month'], help='grouping of data if applicable, default is month', default='month')
     parser.add_argument('--verbose', action='store_true')
-    parser.add_argument('--filter', metavar='PERSON', type=str, nargs='*', help='names of people to parse conversations')
-    parser.add_argument('--output-format', choices=['pretty-json', 'json', 'csv'], default='json')
-    parser.add_argument('--csv-delimiter', default=';')
+    parser.add_argument('--filter', metavar='PERSON', type=str, nargs='*', help='parse only select people')
+    parser.add_argument('--output-format', choices=['pretty-json', 'json', 'csv'], default='csv')
+    parser.add_argument('--csv-delimiter', default=',', help='"," by default')
     
     args = parser.parse_args()
 
@@ -86,29 +110,6 @@ def main():
     result = None
     if args.mode == 'message-count':
         result = message_count(data, args.group_by, args.verbose)
-
-    if args.output_format == 'json':
-        if args.verbose:
-            print('Saving resulting data to {} in json format'.format(args.output))
-
-        with open(args.output, 'w') as output_file:
-            json.dump(result, output_file)
-    
-    elif args.output_format == 'pretty-json':
-        if args.verbose:
-            print('Saving resulting data to {} in pretty json format'.format(args.output))
-
-        with open(args.output, 'w') as output_file:
-            json.dump(result, output_file, indent=True)
-
-    elif args.output_format == 'csv':
-        if args.verbose:
-            print('Saving resulting data to {} in csv format'.format(args.output))
-
-        with open(args.output, 'w') as output_file:
-            csv_writer = csv.writer(output_file, delimiter=args.csv_delimiter)
-            for row in result:
-                csv_writer.writerow(row)
 
 if __name__ == '__main__':
     main()

@@ -45,7 +45,7 @@ def filter_conversations(conversations, is_ignoring_groups, is_ignoring_abandone
     return convos
 
 def main():
-    parser = argparse.ArgumentParser(description='Merge')
+    parser = argparse.ArgumentParser(epilog='~~ From Dzejkop with Love <3 ~~')
 
     parser.add_argument('dir', metavar='DIR', type=str, help='Directory too look for messages.json files')
     parser.add_argument('-o', '--output', type=str, help='Output file name, default is merged.json', default='merged.json')
