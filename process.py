@@ -2,59 +2,13 @@
 import argparse
 import json
 import csv
-from datetime import date
-from itertools import groupby
-from functools import reduce
 
-def to_month(ts):
-    d = date.fromtimestamp(ts)
-    return date(d.year, d.month, 1)
-
-def month_range(start_month, end_month):
-    date_range = [start_month]
-
-    for year in range(start_month.year, end_month.year + 1):
-        for month in range(1, 13):
-            new_date = date(year, month, 1)
-            if new_date > start_month and new_date <= end_month:
-                date_range.append(new_date)
-    
-    return date_range
-
-def message_count_raw(messages_by_person, grouping, verbose):
-    if grouping != 'month':
-        raise Exception('Only month grouping is supported now')
-
-    sorted_messages_by_person = {person: sorted(messages, key=lambda msg: msg['timestamp']) 
-        for person, messages in messages_by_person.items()}
-
-    grouped_messages_by_person = {person: groupby(messages, lambda msg: to_month(msg['timestamp']))
-        for person, messages in sorted_messages_by_person.items()}
-
-    messages_count_by_person_by_month = {person: {month: len(list(messages)) for month, messages in by_month} 
-        for person, by_month in grouped_messages_by_person.items()}
-
-    return messages_count_by_person_by_month
-
-def message_count(messages_by_person, grouping, verbose, out_format='csv'):
-    raw = message_count_raw(messages_by_person, grouping, verbose)
-    all_dates = sorted(reduce(lambda x,y :x + y, ([date for date, count in entries.items()] for p, entries in raw.items())))
-
-    oldest_date = min(all_dates)
-    newest_date = max(all_dates)
-
-    date_range = month_range(oldest_date, newest_date)
-
-    data = {person: [msg_counts[time] if time in msg_counts else 0 for time in date_range] for person, msg_counts in raw.items()}
-    header = ['Person'] + [str(d) for d in date_range]
-
-    ret = [header] + [[person] + msg_counts for person, msg_counts in data.items()]
-    return ret
+from message_count import message_count
 
 def filter_data_by_people(data, people):
     return {key: value for key, value in data.items() if key in people}
 
-def save_results(data, out_format, verbose, output_filepath = None):
+def save_results(data, out_format, verbose, csv_delimiter, output_filepath = None):
     out_file = output_filepath
     if not out_file:
         if out_format in ['json', 'pretty-json']:
@@ -65,15 +19,16 @@ def save_results(data, out_format, verbose, output_filepath = None):
             raise Exception('Unsupported output format')
 
     if verbose:
-        print('Saving data to {}'.format(args.output))
+        print('Saving data to {}'.format(out_file))
+
     with open(out_file, 'w') as output_file:
         if out_format == 'json':
-            json.dump(result, output_file)
+            json.dump(data, output_file)
         elif out_format == 'pretty-json':
-            json.dump(result, output_file, indent=True)
+            json.dump(data, output_file, indent=True)
         elif out_format == 'csv':
-            csv_writer = csv.writer(output_file, delimiter=args.csv_delimiter)
-            for row in result:
+            csv_writer = csv.writer(output_file, delimiter=csv_delimiter)
+            for row in data:
                 csv_writer.writerow(row)
         else:
             raise Exception('Unsupported output format')
@@ -110,6 +65,8 @@ def main():
     result = None
     if args.mode == 'message-count':
         result = message_count(data, args.group_by, args.verbose)
+    
+    save_results(result, args.output_format, args.verbose, args.csv_delimiter, args.output)
 
 if __name__ == '__main__':
     main()
