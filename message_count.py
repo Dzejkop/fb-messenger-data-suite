@@ -2,6 +2,13 @@ from itertools import groupby
 from datetime import date
 from functools import reduce
 
+def subparser(subparsers):
+    parser = subparsers.add_parser('message-count')
+
+    parser.add_argument('--group-by', choices=['day', 'week', 'month'], help='grouping of data if applicable, default is month', default='month')
+    parser.set_defaults(func=message_count)
+    return parser
+
 def to_month(ts):
     d = date.fromtimestamp(ts)
     return date(d.year, d.month, 1)
@@ -32,8 +39,8 @@ def message_count_raw(messages_by_person, grouping, verbose):
 
     return messages_count_by_person_by_month
 
-def message_count(messages_by_person, grouping, verbose, out_format='csv'):
-    raw = message_count_raw(messages_by_person, grouping, verbose)
+def message_count(messages_by_person, args):
+    raw = message_count_raw(messages_by_person, args.group_by, args.verbose)
     all_dates = sorted(reduce(lambda x,y :x + y, ([date for date, count in entries.items()] for p, entries in raw.items())))
 
     oldest_date = min(all_dates)
