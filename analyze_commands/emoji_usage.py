@@ -2,8 +2,14 @@ import argparse
 from emoji import UNICODE_EMOJI
 from copy import copy
 
+DESC = """
+Emoji usage by person in conversation.
+
+Returns 3 rows of data: Emoji, person A usage of given emoji, person B usage of given emoji.
+"""
+
 def subparser(subparsers):
-    parser = subparsers.add_parser('emoji-usage', description='Emoji usage by person in conversation. Returns 4 rows of data: Emoji, total, person A, person B.')
+    parser = subparsers.add_parser('emoji-usage', description=DESC)
 
     parser.add_argument('person', type=str, help='Name of person')
 
@@ -57,11 +63,16 @@ def analyze_emoji_usage(messages, args):
     messages_by_sender = { person: [msg.content() for msg in convo.messages_of(person)] for person in people }
 
     emoji_usages_by_sender = { person: EmojiUsage(messages) for person, messages in messages_by_sender.items() }
-    total_emoji_usage = EmojiUsage((msg.content() for msg in convo.messages()))
 
-    for_each_emoji = {emoji: [total_emoji_usage.of_emoji(emoji)] + [individual_usage.of_emoji(emoji) for individual_usage in emoji_usages_by_sender.values()] for emoji in total_emoji_usage.emojis()}
+    all_emojis_used_by_senders = []
+    for emoij_set in emoji_usages_by_sender.values():
+        all_emojis_used_by_senders += list(emoij_set.emojis())
 
-    header = ['Emoji', 'Total'] + list(people)
+    all_emojis_used_by_senders = set(all_emojis_used_by_senders)
+
+    for_each_emoji = {emoji: [individual_usage.of_emoji(emoji) for individual_usage in emoji_usages_by_sender.values()] for emoji in all_emojis_used_by_senders}
+
+    header = ['Emoji'] + list(people)
     rows = [[emoji] + usage for emoji, usage in for_each_emoji.items()]
 
     return [header] + rows
