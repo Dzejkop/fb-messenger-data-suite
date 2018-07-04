@@ -27,7 +27,7 @@ def save_results(data, verbose, csv_delimiter, output_filepath = None):
 def main():
     parser = argparse.ArgumentParser(epilog='~~ From Dzejkop with Love <3 ~~')
 
-    parser.add_argument('--data', metavar='SOURCE', type=str, help='data source file.')
+    parser.add_argument('--from-file', metavar='SOURCE', type=str, help='data source file.')
     parser.add_argument('--from-std-in', action='store_true', help='Read data from stdin instead of source file.')
     parser.add_argument('--output', type=str, help='output file path, by default is equal to "out.csv" with extension matching the format')
     parser.add_argument('--verbose', action='store_true')
@@ -45,14 +45,15 @@ def main():
     if args.verbose:
         print ('Running with args {}'.format(args))
 
-    if args.verbose:
-        print ('Reading data from {}'.format(args.data))
-
     data = {}
     if args.from_std_in:
+        if args.verbose:
+            print ('Reading data from std in')
         data = json.load(sys.stdin)
-    elif args.data:
-        with open(args.data, encoding='utf-8') as source_file:
+    elif args.from_file:
+        if args.verbose:
+            print ('Reading data from {} file'.format(args.from_file))
+        with open(args.from_file, encoding='utf-8') as source_file:
            data = json.load(source_file)
     else:
         raise Exception('No data source specified. Use either "--from-std-in" or "--data FILENAME"')

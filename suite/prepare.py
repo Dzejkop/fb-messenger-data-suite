@@ -19,11 +19,11 @@ def read_messages_file(path, verbose):
     with open(path) as f:
         return json.load(f)
 
-def merge_conversations(conversations, is_including_groups, is_ignoring_abandoned, verbose):
+def merge_conversations(conversations, is_ignoring_abandoned, verbose):
     if verbose:
         print ('Merging conversations')
     
-    return { convo['participants'][0]: convo['messages'] for convo in conversations}
+    return { ', '.join(convo['participants']): convo['messages'] for convo in conversations}
 
 def filter_conversations(conversations, is_including_groups, is_ignoring_abandoned, verbose):
     convos = copy(conversations)
@@ -39,10 +39,8 @@ def filter_conversations(conversations, is_including_groups, is_ignoring_abandon
 
     if verbose:
         print('Filtering out invaild conversations')
-        
-    convos = list(filter(lambda convo: convo['participants'][0], convos))
 
-    return convos
+    return [c for c in convos if 'participants' in c]
 
 def strip_message(msg, verbose):
     if verbose:
@@ -82,7 +80,7 @@ def encode_decode_conversations(conversations, enc, verbose):
 
     for convo in convos:
         if 'participants' in convo:
-            convo['participants'][0] = enc_dec(convo['participants'][0])
+            convo['participants'] = [enc_dec(p) for p in convo['participants']]
             
         for msg in convo['messages']:
             if not msg:
@@ -110,7 +108,7 @@ def main():
     parser.add_argument('dir', metavar='DIR', type=str, help='Directory too look for messages.json files')
     parser.add_argument('-o', '--output', type=str, help='Output file name, default is merged.json', default='merged.json')
     parser.add_argument('--fname', type=str, help='Name of the messages file to look for, default is message.json', default='message.json')
-    parser.add_argument('--include-groups', action='store_true', help='Ignore group conversations')
+    parser.add_argument('--include-groups', action='store_true', help='Ignore group conversations. Groups will be parsed as separate conversations where the conversation name is the concatenation of participant names.')
     parser.add_argument('--parse-abandoned', action='store_true', help='Parse the conversations that you left')
     parser.add_argument('--verbose', action='store_true', help='Verbose mode')
     parser.add_argument('--pretty', action='store_true', help='Pretty format the output file')
@@ -120,9 +118,6 @@ def main():
     args = parser.parse_args()
     if args.verbose:
         print('Running with args {}'.format(args))
-
-    if args.include_groups:
-        raise Exception('Group conversations are currenlty not supported.')
 
     message_files = find_message_files(args.dir, args.fname, args.verbose)
     conversations = [read_messages_file(path, args.verbose) for path in message_files]
@@ -135,7 +130,7 @@ def main():
     if args.encode_decode:
         conversations = encode_decode_conversations(conversations, args.encode_decode, args.verbose)
 
-    merged = merge_conversations(conversations, args.include_groups, not args.parse_abandoned, args.verbose)
+    merged = merge_conversations(conversations, not args.parse_abandoned, args.verbose)
 
     if args.verbose:
         print ('Saving merged conversations to {}'.format(args.output))
