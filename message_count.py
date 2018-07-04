@@ -3,9 +3,10 @@ from datetime import date
 from functools import reduce
 
 def subparser(subparsers):
-    parser = subparsers.add_parser('message-count')
+    parser = subparsers.add_parser('message-count', description='Message count by grouping')
 
     parser.add_argument('--group-by', choices=['day', 'week', 'month'], help='grouping of data if applicable, default is month', default='month')
+
     parser.set_defaults(func=message_count)
     return parser
 
@@ -28,11 +29,13 @@ def message_count_raw(messages_by_person, grouping, verbose):
     if grouping != 'month':
         raise Exception('Only month grouping is supported now')
 
-    sorted_messages_by_person = {person: sorted(messages, key=lambda msg: msg['timestamp']) 
-        for person, messages in messages_by_person.items()}
+    conversations = messages_by_person.conversations()
 
-    grouped_messages_by_person = {person: groupby(messages, lambda msg: to_month(msg['timestamp']))
-        for person, messages in sorted_messages_by_person.items()}
+    timestamps_by_person = {convo.person(): [msg.timestamp() for msg in convo.messages()] for convo in conversations}
+    timestamps_by_person = {person: sorted(timestamps) for person, timestamps in timestamps_by_person.items()}
+
+    grouped_messages_by_person = {person: groupby(timestamps, lambda ts: to_month(ts))
+        for person, timestamps in timestamps_by_person.items()}
 
     messages_count_by_person_by_month = {person: {month: len(list(messages)) for month, messages in by_month} 
         for person, by_month in grouped_messages_by_person.items()}

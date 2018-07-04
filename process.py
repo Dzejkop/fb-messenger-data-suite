@@ -5,49 +5,37 @@ import csv
 
 import message_count
 import emoji_usage
+import message_analysis
+
+from common import Messages
 
 def filter_data_by_people(data, people):
     return {key: value for key, value in data.items() if key in people}
 
-def save_results(data, out_format, verbose, csv_delimiter, output_filepath = None):
-    out_file = output_filepath
-    if not out_file:
-        if out_format in ['json', 'pretty-json']:
-            out_file = 'out.json'
-        elif out_format in ['csv']:
-            out_file = 'out.csv'
-        else:
-            raise Exception('Unsupported output format')
+def save_results(data, verbose, csv_delimiter, output_filepath = None):
+    out_file = output_filepath if output_filepath else 'out.csv'
 
     if verbose:
         print('Saving data to {}'.format(out_file))
 
     with open(out_file, 'w', encoding='utf-8') as output_file:
-        if out_format == 'json':
-            json.dump(data, output_file)
-        elif out_format == 'pretty-json':
-            json.dump(data, output_file, indent=True)
-        elif out_format == 'csv':
-            csv_writer = csv.writer(output_file, delimiter=csv_delimiter)
-            for row in data:
-                csv_writer.writerow(row)
-        else:
-            raise Exception('Unsupported output format')
+        csv_writer = csv.writer(output_file, delimiter=csv_delimiter)
+        for row in data:
+            csv_writer.writerow(row)
 
 def main():
     parser = argparse.ArgumentParser(epilog='~~ From Dzejkop with Love <3 ~~')
 
     parser.add_argument('data_source', metavar='SOURCE', type=str, help='data source file.')
-
-    subparsers = parser.add_subparsers()
-    message_count.subparser(subparsers)
-    emoji_usage.subparser(subparsers)
-
-    parser.add_argument('--output', type=str, help='output file path, by default is equal to "out" with extension matching the format')
+    parser.add_argument('--output', type=str, help='output file path, by default is equal to "out.csv" with extension matching the format')
     parser.add_argument('--verbose', action='store_true')
     parser.add_argument('--filter', metavar='PERSON', type=str, nargs='*', help='parse only select people')
-    parser.add_argument('--output-format', choices=['pretty-json', 'json', 'csv'], default='csv')
     parser.add_argument('--csv-delimiter', default=',', help='"," by default')
+
+    subparsers = parser.add_subparsers(help='Available commands')
+    message_count.subparser(subparsers)
+    emoji_usage.subparser(subparsers)
+    message_analysis.subparser(subparsers)
 
     args = parser.parse_args()
 
@@ -66,9 +54,11 @@ def main():
             print('Filtering by people {}'.format(args.filter))
         data = filter_data_by_people(data, args.filter)
 
+    data = Messages(data)
+
     result = args.func(data, args)
     
-    save_results(result, args.output_format, args.verbose, args.csv_delimiter, args.output)
+    save_results(result, args.verbose, args.csv_delimiter, args.output)
 
 if __name__ == '__main__':
     main()

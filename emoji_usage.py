@@ -1,58 +1,67 @@
 import argparse
 from emoji import UNICODE_EMOJI
+from copy import copy
 
 def subparser(subparsers):
-    parser = subparsers.add_parser('emoji-usage')
+    parser = subparsers.add_parser('emoji-usage', description='Emoji usage by person in conversation. Returns 4 rows of data: Emoji, total, person A, person B.')
 
     parser.add_argument('person', type=str, help='Name of person')
-    parser.add_argument('--split-by-person', action='store_true')
 
     parser.set_defaults(func=analyze_emoji_usage)
     return parser
 
-def find_emoji(s):
+def find_emoji_in_str(s):
     all_emojis = UNICODE_EMOJI
-    return {emoji: s.count(emoji) if emoji in s else 0 for emoji in all_emojis}
+    return {emoji: s.count(emoji) for emoji in all_emojis if emoji in s}
 
-def merge_emoji_usage(list_of_usages):
-    usages = {}
+def emoji_set_from_str(s):
+    return EmojiSet(find_emoji_in_str(s))
 
-    for entry in list_of_usages:
-        for k in entry.keys():
+class EmojiSet:
+    def __init__(self, data):
+        self.data = data
+
+    def add(self, other):
+        usages = copy(self.data)
+
+        for k, v in other.data.items():
             if k in usages:
-                usages[k] += entry[k]
+                usages[k] += v
             else:
-                usages[k] = entry[k]
-    
-    return usages
+                usages[k] = v
+        
+        return EmojiSet(usages)
 
-def find_convo_with_person(messages_by_person, person, verbose):
-    if verbose:
-        print ('Analyzing emoji usage for {}'.format(person))
+    def val(self, emoji):
+        return self.data[emoji] if emoji in self.data else 0
 
-    if not person in messages_by_person:
-        print ('Failed to find {} in {}'.format(person, messages_by_person.keys()))
+class EmojiUsage(object):
+    def __init__(self, contents):
+        emoji_usages = map(emoji_set_from_str, contents)
+        self.usage = EmojiSet({})
 
-    return messages_by_person[person]
+        for usage in emoji_usages:
+            self.usage = self.usage.add(usage)
 
-def analyze_emoji_usage(messages_by_person, args):
-    convo = find_convo_with_person(messages_by_person, args.person, args.verbose)
+    def of_emoji(self, emoji):
+        return self.usage.val(emoji)
 
-    people = list(set(map(lambda msg: msg['sender_name'], convo)))
+    def emojis(self):
+        return self.usage.data.keys()
 
-    messages_by_sender = { person: list(filter(lambda msg: msg['sender_name'] == person, convo)) for person in people }
+def analyze_emoji_usage(messages, args):
+    convo = messages.conversation(args.person)
 
-    message_contents_by_sender = { person: list(map(lambda msg: msg['content'], messages)) for person, messages in messages_by_sender.items() }
+    people = convo.people()
 
-    emoji_usages_by_sender = { person: merge_emoji_usage(map(lambda msg: find_emoji(msg), messages)) for person, messages in message_contents_by_sender.items() }
+    messages_by_sender = { person: [msg.content() for msg in convo.messages_of(person)] for person in people }
 
-    total_emoji_usage = merge_emoji_usage(emoji_usages_by_sender.values())
+    emoji_usages_by_sender = { person: EmojiUsage(messages) for person, messages in messages_by_sender.items() }
+    total_emoji_usage = EmojiUsage((msg.content() for msg in convo.messages()))
 
-    total_emoji_usage = {k: v for k, v in total_emoji_usage.items() if v > 0}
+    for_each_emoji = {emoji: [total_emoji_usage.of_emoji(emoji)] + [individual_usage.of_emoji(emoji) for individual_usage in emoji_usages_by_sender.values()] for emoji in total_emoji_usage.emojis()}
 
-    for_each_emoji = {emoji: [total_emoji_usage[emoji]] + [individual_usage[emoji] for individual_usage in emoji_usages_by_sender.values()] for emoji in total_emoji_usage.keys()}
-
-    header = ['Emoji', 'Total'] + people
+    header = ['Emoji', 'Total'] + list(people)
     rows = [[emoji] + usage for emoji, usage in for_each_emoji.items()]
 
     return [header] + rows
