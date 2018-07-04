@@ -3,9 +3,9 @@ import argparse
 import json
 import csv
 
-import message_count
-import emoji_usage
-import message_analysis
+from analyze_commands import message_count
+from analyze_commands import emoji_usage
+from analyze_commands import message_analysis
 
 from common import Messages
 
