@@ -76,5 +76,3 @@ optional arguments:
 
 ## Data visualization
 WIP
-
-### [Examples - visualized using Google Sheets](./example)
