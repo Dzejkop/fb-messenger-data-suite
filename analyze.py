@@ -2,6 +2,7 @@
 import argparse
 import json
 import csv
+import sys
 
 from analyze_commands import message_count
 from analyze_commands import emoji_usage
@@ -26,11 +27,13 @@ def save_results(data, verbose, csv_delimiter, output_filepath = None):
 def main():
     parser = argparse.ArgumentParser(epilog='~~ From Dzejkop with Love <3 ~~')
 
-    parser.add_argument('data_source', metavar='SOURCE', type=str, help='data source file.')
+    parser.add_argument('--data', metavar='SOURCE', type=str, help='data source file.')
+    parser.add_argument('--from-std-in', action='store_true', help='Read data from stdin instead of source file.')
     parser.add_argument('--output', type=str, help='output file path, by default is equal to "out.csv" with extension matching the format')
     parser.add_argument('--verbose', action='store_true')
     parser.add_argument('--filter', metavar='PERSON', type=str, nargs='*', help='parse only select people')
     parser.add_argument('--csv-delimiter', default=',', help='"," by default')
+    parser.add_argument('--to-std-out', action='store_true', help='Send output into stdout instead of saving to file.')
 
     subparsers = parser.add_subparsers(help='Available commands')
     message_count.subparser(subparsers)
@@ -43,11 +46,16 @@ def main():
         print ('Running with args {}'.format(args))
 
     if args.verbose:
-        print ('Reading data from {}'.format(args.data_source))
+        print ('Reading data from {}'.format(args.data))
 
     data = {}
-    with open(args.data_source, encoding='utf-8') as source_file:
-        data = json.load(source_file)
+    if args.from_std_in:
+        data = json.load(sys.stdin)
+    elif args.data:
+        with open(args.data, encoding='utf-8') as source_file:
+           data = json.load(source_file)
+    else:
+        raise Exception('No data source specified. Use either "--from-std-in" or "--data FILENAME"')
 
     if args.filter:
         if args.verbose:
@@ -58,7 +66,11 @@ def main():
 
     result = args.func(data, args)
     
-    save_results(result, args.verbose, args.csv_delimiter, args.output)
+    if args.to_std_out:
+        for row in result:
+            print (str(args.csv_delimiter).join(map(lambda x: str(x), row)))
+    else:
+        save_results(result, args.verbose, args.csv_delimiter, args.output)
 
 if __name__ == '__main__':
     main()
